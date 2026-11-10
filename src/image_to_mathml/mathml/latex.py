@@ -11,7 +11,7 @@ _DELIMITER_PATTERNS = (
     (re.compile(r"^\s*\\\(\s*(.*?)\s*\\\)\s*$", re.DOTALL), r"\1"),
     (
         re.compile(
-            r"^\s*\\begin\{(?:equation|displaymath|math)\*?\}\s*(.*?)\s*\\end\{(?:equation|displaymath|math)\*?\}\s*$",
+            r"^\s*\\begin\{(?:equation|displaymath|math)\*?\}\s*(.*?)\s*\\end\{\1(?:\*)?\}\s*$",
             re.DOTALL,
         ),
         r"\1",

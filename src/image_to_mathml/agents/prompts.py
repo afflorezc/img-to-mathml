@@ -48,6 +48,15 @@ def _structure_rules(
     that represents f and arg="var" on the element that represents x.
 11. Put intent and arg on the smallest element that owns the meaning. Prefer
     <mfrac intent="fraction($num,$den)"> rather than an extra wrapper.
+12. Only add intent attributes for operators tag <mo> when the context needs it for
+    avoid any ambiguity, prefer the default fallback instead, e.g. do not add intent for
+    equal, plus, minus and other common basic operations when the identified semantic meaning 
+    is the default. Example:
+    Avoid: <mo intent="equals">=</mo>, prefers <mo>=</mo>, add intent when the context requires
+    a diferent meaning from the defualt equals. Use only the intent fraction($num, den) when the
+    representation doesn't use the <mfrac> tag, for example for presentation in the form a/b, in
+    order to guarantee the correct reading from the reading tool as 'a over b'.
+13. It is okey if for one simple equation the final output MathML document doesn't have any intent.
 """
 
 
@@ -68,7 +77,7 @@ LaTeX: \\Gamma(x)
         + f"""
 Examples (output the full XML, not an ellipsis):
 LaTeX: \\frac{{a}}{{b}}
-<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mfrac intent="fraction($num,$den)"><mi arg="num">a</mi><mi arg="den">b</mi></mfrac></mrow></math>
+<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mfrac><mi>a</mi><mi>b</mi></mfrac></mrow></math>
 
 LaTeX: f(x)
 <math xmlns="http://www.w3.org/1998/Math/MathML"><mrow intent="$name($var)"><mi arg="name">f</mi><mo>(</mo><mi arg="var">x</mi><mo>)</mo></mrow></math>
@@ -95,7 +104,7 @@ Example:
 Base MathML:
 <math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mfrac><mi>a</mi><mi>b</mi></mfrac></mrow></math>
 Annotated MathML:
-<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mfrac intent="fraction($num,$den)"><mi arg="num">a</mi><mi arg="den">b</mi></mfrac></mrow></math>
+<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mfrac"><mi>a</mi><mi>b</mi></mfrac></mrow></math>
 
 Base MathML:
 <math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>f</mi><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math>
