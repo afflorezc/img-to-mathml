@@ -66,6 +66,17 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
         "gamma-function,airy-function",
     )
     parser.add_argument("--max-repairs", type=int, default=None)
+    parser.add_argument(
+        "--no-concept-rag",
+        action="store_true",
+        help="Send the full core concept list instead of retrieved candidates",
+    )
+    parser.add_argument(
+        "--concept-rag-top-k",
+        type=int,
+        default=None,
+        help="Maximum number of retrieved concept cards (default: 8)",
+    )
     parser.add_argument("--model", default=None)
     parser.add_argument(
         "--vision-model",

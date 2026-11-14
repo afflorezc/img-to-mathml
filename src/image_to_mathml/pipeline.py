@@ -13,6 +13,7 @@ from .config import Settings
 from .llm.base import LLMClient, LLMError
 from .llm.factory import build_llm
 from .mathml.annotator import annotate_tree
+from .mathml.concept_rag import ConceptRAG
 from .mathml.concepts import ConceptRegistry, get_registry
 from .mathml.converter import LatexToMathML
 from .mathml.latex import clean_latex
@@ -72,6 +73,9 @@ class EquationPipeline:
         self.ocr = ocr
         self.converter = LatexToMathML()
         self.registry = registry or get_registry()
+        self.concept_rag = (
+            ConceptRAG(self.registry) if self.settings.concept_rag else None
+        )
         self.direct_agent = DirectMathMLAgent(self.llm, self.settings)
         self.hybrid_agent = HybridIntentAgent(self.llm, self.settings)
         self.vision_agent = VisionMathMLAgent(self.settings)
@@ -700,6 +704,22 @@ class EquationPipeline:
                 with timings.measure("assign-ids", "semantic-json", attempt=attempts):
                     assign_node_ids(attempt_root)
                     semantic_tree = semantic_tree_markup(attempt_root)
+                concept_cards = None
+                if self.concept_rag is not None:
+                    with timings.measure(
+                        "concept-rag", "concept-rag", attempt=attempts
+                    ):
+                        concept_cards = self.concept_rag.retrieve(
+                            latex,
+                            attempt_root,
+                            context,
+                            allow_open=allow_open,
+                            allowed_open_concepts=self._allowed_open(allow_open),
+                            top_k=self.settings.concept_rag_top_k,
+                        )
+                    trace.append(
+                        f"attempt {attempts}: concept-rag ({len(concept_cards)} cards)"
+                    )
                 try:
                     with timings.measure("llm", tool, attempt=attempts):
                         raw = self.hybrid_agent.run(
@@ -711,6 +731,7 @@ class EquationPipeline:
                             allow_all_open_concepts=(
                                 allow_open and self.settings.allow_all_open_concepts
                             ),
+                            concept_cards=concept_cards,
                         )
                 except LLMError as exc:
                     warnings.append(
