@@ -87,10 +87,24 @@ function names, operators), LaTeX triggers and lexical aliases, then applies the
 current open-concept policy. The retrieved cards are injected into the prompt
 and only those concept names are offered to the model.
 
+A second retriever covers the W3C open concept list. Every open concept has a
+card generated from the local registry, while
+`data/open_concept_hints.json` maps textbook areas and topics such as
+`análisis`, `probabilidad`, `álgebra lineal`, `teoría de números`,
+`transformada de Fourier` or `mecánica cuántica` to candidate open concepts.
+The open retriever also uses LaTeX, symbol and structural cues. Its cards are
+appended to the core cards after applying the current open-concept policy, so
+`--allow-open-concepts` or `--allowed-open-concepts` is still required before
+an open candidate can reach the model. When the core RAG is disabled, the full
+core list is sent and the open retriever is not used.
+
 Use `--no-concept-rag` to send the full core list again, or
-`--concept-rag-top-k` to change the number of cards (default `8`). The
-environment variables are `IMAGE_TO_MATHML_CONCEPT_RAG` and
-`IMAGE_TO_MATHML_CONCEPT_RAG_TOP_K`.
+`--concept-rag-top-k` to change the number of core cards (default `8`). Use
+`--no-open-concept-rag` to disable the open retriever and
+`--open-concept-rag-top-k` to change its number of cards (default `5`). The
+environment variables are `IMAGE_TO_MATHML_CONCEPT_RAG`,
+`IMAGE_TO_MATHML_CONCEPT_RAG_TOP_K`, `IMAGE_TO_MATHML_OPEN_CONCEPT_RAG` and
+`IMAGE_TO_MATHML_OPEN_CONCEPT_RAG_TOP_K`.
 
 ## OCR backends
 
@@ -224,7 +238,11 @@ input.
   `gamma-function,airy-function`.
 - `--max-repairs`: maximum repair attempts for LLM flows.
 - `--no-concept-rag`: send the full core concept list instead of retrieved cards.
-- `--concept-rag-top-k`: maximum number of retrieved concept cards (default `8`).
+- `--concept-rag-top-k`: maximum number of retrieved core concept cards
+  (default `8`).
+- `--no-open-concept-rag`: disable area/topic retrieval for open concepts.
+- `--open-concept-rag-top-k`: maximum number of retrieved open concept cards
+  (default `5`).
 - `--model`: text LLM model name.
 - `--vision-model`: Ollama vision model for the vision agent (default
   `qwen3-vl:4b-instruct`).

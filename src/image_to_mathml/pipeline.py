@@ -23,6 +23,7 @@ from .mathml.normalizer import (
     parse_and_normalize,
     serialize_mathml,
 )
+from .mathml.open_concept_rag import OpenConceptRAG
 from .mathml.semantic import (
     SemanticError,
     apply_semantic_payload,
@@ -75,6 +76,9 @@ class EquationPipeline:
         self.registry = registry or get_registry()
         self.concept_rag = (
             ConceptRAG(self.registry) if self.settings.concept_rag else None
+        )
+        self.open_concept_rag = (
+            OpenConceptRAG(self.registry) if self.settings.open_concept_rag else None
         )
         self.direct_agent = DirectMathMLAgent(self.llm, self.settings)
         self.hybrid_agent = HybridIntentAgent(self.llm, self.settings)
@@ -720,6 +724,32 @@ class EquationPipeline:
                     trace.append(
                         f"attempt {attempts}: concept-rag ({len(concept_cards)} cards)"
                     )
+                    if self.open_concept_rag is not None:
+                        with timings.measure(
+                            "open-concept-rag",
+                            "open-concept-rag",
+                            attempt=attempts,
+                        ):
+                            open_cards = self.open_concept_rag.retrieve(
+                                latex,
+                                attempt_root,
+                                context,
+                                allow_open=allow_open,
+                                allowed_open_concepts=self._allowed_open(allow_open),
+                                top_k=self.settings.open_concept_rag_top_k,
+                            )
+                        seen = {card.name for card in concept_cards}
+                        added = 0
+                        for card in open_cards:
+                            if card.name in seen:
+                                continue
+                            concept_cards.append(card)
+                            seen.add(card.name)
+                            added += 1
+                        trace.append(
+                            f"attempt {attempts}: open-concept-rag "
+                            f"({len(open_cards)} cards, {added} added)"
+                        )
                 try:
                     with timings.measure("llm", tool, attempt=attempts):
                         raw = self.hybrid_agent.run(

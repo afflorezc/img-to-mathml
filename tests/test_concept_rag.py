@@ -1,3 +1,6 @@
+import json
+from importlib.resources import files
+
 from image_to_mathml.agents.prompts import semantic_messages
 from image_to_mathml.config import Settings
 from image_to_mathml.mathml.concept_cards import (
@@ -9,6 +12,10 @@ from image_to_mathml.mathml.concept_rag import ConceptRAG
 from image_to_mathml.mathml.concepts import get_registry
 from image_to_mathml.mathml.converter import LatexToMathML
 from image_to_mathml.mathml.normalizer import parse_and_normalize
+from image_to_mathml.mathml.open_concept_rag import (
+    OpenConceptRAG,
+    get_open_concept_cards,
+)
 from image_to_mathml.models import EquationRequest, Flow, MathContext
 from image_to_mathml.pipeline import EquationPipeline
 
@@ -191,3 +198,91 @@ def test_all_cards_come_from_the_registry():
 
     assert "fraction" in registry_names
     assert "generic-application" in registry_names
+
+
+def test_open_rag_covers_every_open_only_concept():
+    registry = get_registry()
+    open_only = set(registry.open) - set(registry.core)
+    card_names = {card.name for card in get_open_concept_cards()}
+
+    assert card_names == open_only
+    assert "fourier-transform" in card_names
+    assert "gamma-function" in card_names
+
+
+def test_open_hints_only_reference_open_concepts():
+    payload = json.loads(
+        files("image_to_mathml")
+        .joinpath("data", "open_concept_hints.json")
+        .read_text(encoding="utf-8")
+    )
+    registry = get_registry()
+    open_only = set(registry.open) - set(registry.core)
+    referenced = set(payload["cues"])
+
+    for section in ("areas", "topics"):
+        for names in payload[section].values():
+            referenced.update(names)
+
+    assert referenced <= open_only
+
+
+def test_open_rag_uses_area_and_topic_to_select_candidates():
+    rag = OpenConceptRAG()
+    context = MathContext(area="Análisis", topic="transformada de Fourier")
+
+    names = [
+        card.name
+        for card in rag.retrieve("f", _tree("f"), context, allow_open=True, top_k=8)
+    ]
+
+    assert names[0] == "fourier-transform"
+    assert "mobius-function" not in names
+
+
+def test_open_rag_applies_the_open_concept_policy():
+    rag = OpenConceptRAG()
+    latex = r"\Gamma(x)"
+    root = _tree(latex)
+
+    assert rag.retrieve(latex, root, allow_open=False) == []
+    assert "gamma-function" in {
+        card.name for card in rag.retrieve(latex, root, allow_open=True)
+    }
+    assert (
+        rag.retrieve(
+            latex,
+            root,
+            allow_open=True,
+            allowed_open_concepts={"beta-function"},
+        )
+        == []
+    )
+    assert "gamma-function" in {
+        card.name
+        for card in rag.retrieve(
+            latex,
+            root,
+            allow_open=True,
+            allowed_open_concepts={"gamma-function"},
+        )
+    }
+
+
+def test_pipeline_adds_open_rag_cards_to_the_semantic_prompt():
+    response = '{"version": 1, "annotations": []}'
+    fake = FakeSemanticLLM(response)
+    pipeline = EquationPipeline(
+        settings=Settings(allow_all_open_concepts=True),
+        llm=fake,
+    )
+    pipeline.run(
+        EquationRequest(
+            latex="f",
+            flow=Flow.HYBRID,
+            context=MathContext(area="Análisis", topic="transformada de Fourier"),
+        )
+    )
+
+    system = fake.messages[0][0]["content"]
+    assert "fourier-transform" in system

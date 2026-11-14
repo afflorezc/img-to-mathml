@@ -75,7 +75,18 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
         "--concept-rag-top-k",
         type=int,
         default=None,
-        help="Maximum number of retrieved concept cards (default: 8)",
+        help="Maximum number of retrieved core concept cards (default: 8)",
+    )
+    parser.add_argument(
+        "--no-open-concept-rag",
+        action="store_true",
+        help="Disable the area/topic retrieval of open concept cards",
+    )
+    parser.add_argument(
+        "--open-concept-rag-top-k",
+        type=int,
+        default=None,
+        help="Maximum number of retrieved open concept cards (default: 5)",
     )
     parser.add_argument("--model", default=None)
     parser.add_argument(
